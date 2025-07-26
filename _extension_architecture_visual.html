@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Mindful Browsing Extension Architecture</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
+        .component { border: 2px solid #333; padding: 15px; margin: 10px; border-radius: 8px; background: white; }
+        .service { border-color: #2196F3; background: #e3f2fd; }
+        .page { border-color: #4CAF50; background: #e8f5e8; }
+        .message { border-color: #FF9800; background: #fff3e0; }
+        .arrow { font-size: 20px; margin: 0 10px; }
+        .flow { display: flex; align-items: center; margin: 20px 0; }
+        .column { display: flex; flex-direction: column; }
+        .row { display: flex; flex-direction: row; align-items: center; }
+    </style>
+</head>
+<body>
+    <h1>Mindful Browsing Extension Flow</h1>
+    
+    <div class="flow">
+        <div class="component service">
+            <strong>Background Service (background.js)</strong>
+            <ul>
+                <li>Extension lifecycle management</li>
+                <li>Navigation interception</li>
+                <li>Message routing hub</li>
+            </ul>
+        </div>
+        
+        <div class="arrow">→</div>
+        
+        <div class="component service">
+            <strong>Navigation Handler</strong>
+            <ul>
+                <li>Monitors webNavigation</li>
+                <li>Checks mindful sites list</li>
+                <li>Redirects to pause page</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="flow">
+        <div class="component page">
+            <strong>Mindful Pause Page</strong>
+            <ul>
+                <li>Breathing exercises</li>
+                <li>Reflection questions</li>
+                <li>Continue/redirect logic</li>
+            </ul>
+        </div>
+        
+        <div class="arrow">↔</div>
+        
+        <div class="component message">
+            <strong>Message Handler</strong>
+            <ul>
+                <li>getInitialData</li>
+                <li>saveState</li>
+                <li>proceedToSite</li>
+                <li>tookMindfulBreak</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="flow">
+        <div class="component page">
+            <strong>Popup Page</strong>
+            <ul>
+                <li>Settings management</li>
+                <li>Site list editing</li>
+                <li>Extension toggle</li>
+            </ul>
+        </div>
+        
+        <div class="component page">
+            <strong>Options Page</strong>
+            <ul>
+                <li>Advanced settings</li>
+                <li>Activity logs</li>
+                <li>Detailed configuration</li>
+            </ul>
+        </div>
+        
+        <div class="component page">
+            <strong>Onboarding Page</strong>
+            <ul>
+                <li>First-time setup</li>
+                <li>Feature introduction</li>
+                <li>Initial site selection</li>
+            </ul>
+        </div>
+    </div>
+
+    <h2>Key Communication Points</h2>
+    <ul>
+        <li><strong>Storage Service:</strong> Central data persistence (settings, sites, logs)</li>
+        <li><strong>Message Handler:</strong> All inter-component communication</li>
+        <li><strong>Activity Logger:</strong> Tracks user behavior for insights</li>
+        <li><strong>Content Script:</strong> (Currently empty - potential for page interaction)</li>
+    </ul>
+</body>
+</html>
