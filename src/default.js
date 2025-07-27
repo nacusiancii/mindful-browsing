@@ -1,11 +1,16 @@
-/**
- * @file background/config/defaults.js
- * @description Defines the default state for the extension. This is used on first installation
- * to populate chrome.storage with initial values.
- */
-
-export const defaultState = {
-  mindfulSites: [],
+// --- Default State ---
+const defaultState = {
+  mindfulSites: [
+    "facebook.com",
+    "instagram.com",
+    "twitter.com",
+    "tiktok.com",
+    "youtube.com",
+    "reddit.com",
+    "linkedin.com",
+    "snapchat.com",
+    "news.google.com",
+  ],
   settings: {
     enabled: true,
     showStats: true,
@@ -32,3 +37,7 @@ export const defaultState = {
   ],
   activityLog: [],
 };
+
+// For use with importScripts in background.js
+// This makes defaultState available globally when the script is loaded
+self.defaultState = defaultState;
