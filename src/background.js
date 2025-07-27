@@ -121,7 +121,7 @@ const MESSAGE_HANDLERS = {
     await logActivity({
       site: new URL(site).hostname,
       timestamp: timestamp || Date.now(),
-      action: "pause_initiated",
+      action: "took_pause",
       tabId,
     });
   },
