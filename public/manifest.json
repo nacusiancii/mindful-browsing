@@ -3,7 +3,17 @@
   "name": "MindfulBrowsing",
   "version": "1.2.0",
   "description": "A Chrome extension that helps create mental barriers before accessing potentially distracting websites with robust subdomain support and enhanced features",
-  "permissions": ["tabs", "storage", "activeTab", "scripting", "background"],
+  "author": "MindfulBrowsing Team",
+  "homepage_url": "https://mindfulbrowsing.example.com",
+  "short_name": "MindfulBrowse",
+  "permissions": [
+    "tabs",
+    "storage",
+    "activeTab",
+    "scripting",
+    "background",
+    "webNavigation"
+  ],
   "host_permissions": ["<all_urls>"],
   "background": {
     "service_worker": "background.js"
@@ -29,10 +39,9 @@
   "web_accessible_resources": [
     {
       "resources": [
-        "styles.css",
+        "assets/*.css",
         "icons/*.png",
         "onboarding.html",
-        "intention-check.html",
         "mindful-pause.html"
       ],
       "matches": ["<all_urls>"]
