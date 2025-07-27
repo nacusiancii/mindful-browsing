@@ -17,11 +17,77 @@ import {
   Clock,
   Heart,
 } from "lucide-react";
+import type { MindfulBreak } from "../default";
 
 interface IntentionCheckProps {
   navigate: (page: string, params?: Record<string, string>) => void;
   params: Record<string, string>;
 }
+
+// Define the extended break type with icon and color
+interface ExtendedMindfulBreak extends MindfulBreak {
+  icon: React.ComponentType<{ className?: string }>;
+  color: string;
+}
+
+const fallbackBreaks: ExtendedMindfulBreak[] = [
+  {
+    id: "meditate",
+    label: "Meditate",
+    enabled: true,
+    icon: Sparkles,
+    color: "bg-purple-100 text-purple-700",
+  },
+  {
+    id: "walk",
+    label: "Take a walk",
+    enabled: true,
+    icon: TreePine,
+    color: "bg-green-100 text-green-700",
+  },
+  {
+    id: "tea",
+    label: "Make tea/coffee",
+    enabled: true,
+    icon: Coffee,
+    color: "bg-amber-100 text-amber-700",
+  },
+  {
+    id: "read",
+    label: "Read something",
+    enabled: true,
+    icon: Book,
+    color: "bg-blue-100 text-blue-700",
+  },
+  {
+    id: "organize",
+    label: "Organize space",
+    enabled: true,
+    icon: Sparkles,
+    color: "bg-teal-100 text-teal-700",
+  },
+  {
+    id: "todos",
+    label: "Check todos",
+    enabled: true,
+    icon: Clock,
+    color: "bg-orange-100 text-orange-700",
+  },
+  {
+    id: "projects",
+    label: "Review old projects",
+    enabled: true,
+    icon: Book,
+    color: "bg-indigo-100 text-indigo-700",
+  },
+  {
+    id: "connect",
+    label: "Connect with loved ones",
+    enabled: true,
+    icon: Heart,
+    color: "bg-rose-100 text-rose-700",
+  },
+];
 
 export default function IntentionCheck({
   navigate,
@@ -33,6 +99,9 @@ export default function IntentionCheck({
 
   const [reason, setReason] = useState("");
   const [selectedBreak, setSelectedBreak] = useState("");
+  const [mindfulBreaks, setMindfulBreaks] = useState<ExtendedMindfulBreak[]>(
+    []
+  );
   console.log(selectedBreak);
 
   // Log pause event when component mounts
@@ -51,56 +120,79 @@ export default function IntentionCheck({
     }
   }, [tabId, targetSite]);
 
-  const mindfulBreaks = [
-    {
-      id: "meditate",
-      label: "Meditate",
-      icon: Sparkles,
-      color: "bg-purple-100 text-purple-700",
-    },
-    {
-      id: "walk",
-      label: "Take a walk",
-      icon: TreePine,
-      color: "bg-green-100 text-green-700",
-    },
-    {
-      id: "tea",
-      label: "Make tea/coffee",
-      icon: Coffee,
-      color: "bg-amber-100 text-amber-700",
-    },
-    {
-      id: "read",
-      label: "Read something",
-      icon: Book,
-      color: "bg-blue-100 text-blue-700",
-    },
-    {
-      id: "organize",
-      label: "Organize space",
-      icon: Sparkles,
-      color: "bg-teal-100 text-teal-700",
-    },
-    {
-      id: "todos",
-      label: "Check todos",
-      icon: Clock,
-      color: "bg-orange-100 text-orange-700",
-    },
-    {
-      id: "projects",
-      label: "Review old projects",
-      icon: Book,
-      color: "bg-indigo-100 text-indigo-700",
-    },
-    {
-      id: "connect",
-      label: "Connect with loved ones",
-      icon: Heart,
-      color: "bg-rose-100 text-rose-700",
-    },
-  ];
+  // Helper function to get icon for break
+  const getIconForBreak = (id: string) => {
+    switch (id) {
+      case "meditate":
+        return Sparkles;
+      case "organize":
+        return Sparkles;
+      case "walk":
+        return TreePine;
+      case "tea":
+        return Coffee;
+      case "read":
+        return Book;
+      case "projects":
+        return Book;
+      case "todos":
+        return Clock;
+      case "connect":
+        return Heart;
+      default:
+        return Sparkles;
+    }
+  };
+
+  // Helper function to get color for break
+  const getColorForBreak = (id: string) => {
+    switch (id) {
+      case "meditate":
+        return "bg-purple-100 text-purple-700";
+      case "walk":
+        return "bg-green-100 text-green-700";
+      case "tea":
+        return "bg-amber-100 text-amber-700";
+      case "read":
+        return "bg-blue-100 text-blue-700";
+      case "organize":
+        return "bg-teal-100 text-teal-700";
+      case "todos":
+        return "bg-orange-100 text-orange-700";
+      case "projects":
+        return "bg-indigo-100 text-indigo-700";
+      case "connect":
+        return "bg-rose-100 text-rose-700";
+      default:
+        return "bg-purple-100 text-purple-700";
+    }
+  };
+
+  // Fallback hardcoded breaks
+
+  // Fetch breaks from storage
+  useEffect(() => {
+    chrome.runtime
+      .sendMessage({
+        action: "getMindfulBreaks",
+      })
+      .then((fetchedBreaks) => {
+        // Map fetched breaks to include icon and color
+        const extendedBreaks: ExtendedMindfulBreak[] = fetchedBreaks.map(
+          (breakItem: MindfulBreak) => ({
+            ...breakItem,
+            icon: getIconForBreak(breakItem.id),
+            color: getColorForBreak(breakItem.id),
+          })
+        );
+        setMindfulBreaks(extendedBreaks);
+      })
+      .catch((error) => {
+        console.error("Error fetching mindful breaks:", error);
+        // Fallback to hardcoded breaks if fetch fails
+        setMindfulBreaks(fallbackBreaks);
+      });
+  }, []);
 
   const handleProceed = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
@@ -194,24 +286,26 @@ export default function IntentionCheck({
               What would nourish you right now?
             </h3>
             <div className="grid grid-cols-4 gap-3">
-              {mindfulBreaks.map((breakOption) => {
-                const Icon = breakOption.icon;
-                return (
-                  <Button
-                    key={breakOption.id}
-                    onClick={() => handleBreak(breakOption.label)}
-                    variant="outline"
-                    className="h-auto p-4 flex flex-col items-center space-y-2 border-2 hover:border-indigo-300 hover:bg-indigo-50 transition-all duration-200"
-                  >
-                    <div className={`p-2 rounded-full ${breakOption.color}`}>
-                      <Icon className="h-5 w-5" />
-                    </div>
-                    <span className="text-sm font-medium">
-                      {breakOption.label}
-                    </span>
-                  </Button>
-                );
-              })}
+              {mindfulBreaks
+                .filter((breakOption) => breakOption.enabled)
+                .map((breakOption) => {
+                  const Icon = breakOption.icon;
+                  return (
+                    <Button
+                      key={breakOption.id}
+                      onClick={() => handleBreak(breakOption.label)}
+                      variant="outline"
+                      className="h-auto p-4 flex flex-col items-center space-y-2 border-2 hover:border-indigo-300 hover:bg-indigo-50 transition-all duration-200"
+                    >
+                      <div className={`p-2 rounded-full ${breakOption.color}`}>
+                        <Icon className="h-5 w-5" />
+                      </div>
+                      <span className="text-sm font-medium">
+                        {breakOption.label}
+                      </span>
+                    </Button>
+                  );
+                })}
             </div>
           </div>
 
