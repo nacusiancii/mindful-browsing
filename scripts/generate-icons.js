@@ -15,7 +15,7 @@ function renderLeafIconToSVG(size) {
     React.createElement(Leaf, {
       width: size,
       height: size,
-      color: "#4ade80", // Green color to match the app's theme
+      color: "#155dfc", // text-blue-600 color to match the app's theme
     })
   );
 
