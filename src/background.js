@@ -4,6 +4,13 @@
  * It initializes the extension, sets up listeners, and orchestrates the different modules.
  */
 
+// --- Temporary Bypass Set ---
+/**
+ * Set to track temporary bypasses for tabId + hostname combinations.
+ * This prevents infinite loops when redirecting to mindful pause pages.
+ * @type {Set<string>}
+ */
+const TEMPORARY_BYPASS = new Set();
 // --- Storage Utilities ---
 /**
  * Retrieves state from chrome.storage.sync.
@@ -76,6 +83,14 @@ const handleNav = async (details) => {
     );
 
     if (isMindfulSite) {
+      // Check for temporary bypass
+      const bypassKey = `${details.tabId}_${url.hostname}`;
+      if (TEMPORARY_BYPASS.has(bypassKey)) {
+        // Remove the bypass and allow navigation to proceed
+        TEMPORARY_BYPASS.delete(bypassKey);
+        return;
+      }
+
       const pauseUrl = chrome.runtime.getURL("mindful-pause.html");
       const redirectUrl = `${pauseUrl}?target=${encodeURIComponent(
         details.url
@@ -105,6 +120,11 @@ const MESSAGE_HANDLERS = {
       action: "continued_mindfully",
       intention,
     });
+
+    // Add temporary bypass before updating the tab URL
+    const bypassKey = `${tabId}_${new URL(targetSite).hostname}`;
+    TEMPORARY_BYPASS.add(bypassKey);
+
     chrome.tabs.update(tabId, { url: targetSite });
   },
 
