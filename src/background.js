@@ -116,6 +116,15 @@ const MESSAGE_HANDLERS = {
       breakActivity,
     });
   },
+
+  async logPause({ site, timestamp, tabId }) {
+    await logActivity({
+      site: new URL(site).hostname,
+      timestamp: timestamp || Date.now(),
+      action: "pause_initiated",
+      tabId,
+    });
+  },
 };
 
 const addMessageListener = () => {

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "../components/ui/button";
 import {
   Card,
@@ -34,6 +34,22 @@ export default function IntentionCheck({
   const [reason, setReason] = useState("");
   const [selectedBreak, setSelectedBreak] = useState("");
   console.log(selectedBreak);
+
+  // Log pause event when component mounts
+  useEffect(() => {
+    if (tabId && targetSite) {
+      chrome.runtime
+        .sendMessage({
+          action: "logPause",
+          payload: {
+            site: decodeURIComponent(targetSite),
+            timestamp: Date.now(),
+            tabId: parseInt(tabId),
+          },
+        })
+        .catch((error) => console.error("Error logging pause:", error));
+    }
+  }, [tabId, targetSite]);
 
   const mindfulBreaks = [
     {
