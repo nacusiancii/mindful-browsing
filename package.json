@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build": "tsc -b && vite build && node scripts/generate-icons.js",
+    "build:icons": "node scripts/generate-icons.js",
     "lint": "eslint .",
     "preview": "vite preview"
   },
@@ -19,7 +20,6 @@
     "class-variance-authority": "^0.7.1",
     "lucide-react": "^0.525.0",
     "react": "^19.1.0",
-    "react-dom": "^19.1.0",
     "tailwind-merge": "^3.3.1",
     "tailwindcss": "^4.1.11"
   },
@@ -34,6 +34,8 @@
     "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-react-refresh": "^0.4.20",
     "globals": "^16.3.0",
+    "react-dom": "^19.1.0",
+    "sharp": "^0.34.3",
     "typescript": "~5.8.3",
     "typescript-eslint": "^8.35.1",
     "vite": "^7.0.4"
