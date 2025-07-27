@@ -68,8 +68,9 @@ export default function Popup() {
 
           // Count different types of activities
           todayActivities.forEach((activity) => {
-            pauses++; // Each activity represents a pause
-            if (activity.action === "continued_mindfully") {
+            if (activity.action === "pause_initiated") {
+              pauses++;
+            } else if (activity.action === "continued_mindfully") {
               mindfulChoices++;
             } else if (activity.action === "took_break") {
               breaksChosen++;
@@ -112,6 +113,8 @@ export default function Popup() {
                     ? "continued mindfully"
                     : activity.action === "took_break"
                     ? `chose to ${activity.breakActivity || "take a break"}`
+                    : activity.action === "pause_initiated"
+                    ? "took a mindful pause"
                     : activity.action,
                 time: timeAgo,
               };
