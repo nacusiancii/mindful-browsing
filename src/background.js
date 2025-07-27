@@ -46,7 +46,7 @@ const loadDefaultState = async () => {
 const logActivity = async (activity) => {
   try {
     const { activityLog = [] } = await getState("activityLog");
-    const newLog = [activity, ...activityLog].slice(0, 100);
+    const newLog = [activity, ...activityLog].slice(0, 1000);
     await setState({ activityLog: newLog });
   } catch (error) {
     console.error(error);
