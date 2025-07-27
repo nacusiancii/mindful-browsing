@@ -125,6 +125,11 @@ const MESSAGE_HANDLERS = {
       tabId,
     });
   },
+
+  async getMindfulBreaks() {
+    const { mindfulBreaks = [] } = await getState("mindfulBreaks");
+    return mindfulBreaks;
+  },
 };
 
 const addMessageListener = () => {
