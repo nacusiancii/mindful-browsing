@@ -1,52 +1,52 @@
-import { useState, useEffect } from "react"
-import { Button } from "../components/ui/button"
-import { Card, CardContent } from "../components/ui/card"
-import { Leaf, Clock, Heart } from "lucide-react"
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { Button } from "../components/ui/button";
+import { Card, CardContent } from "../components/ui/card";
+import { Leaf, Clock, Heart } from "lucide-react";
 
-export default function MindfulPause() {
+interface MindfulPauseProps {
+  navigate: (page: string, params?: Record<string, string>) => void;
+}
 
-  const [searchParams] = useSearchParams();
+export default function MindfulPause({ navigate }: MindfulPauseProps) {
+  // Get URL parameters directly from the window location
+  const urlParams = new URLSearchParams(window.location.search);
+  const targetSite = urlParams.get("target") || "social media";
+  const tabId = urlParams.get("tabId") || "";
 
-  const targetSite = searchParams.get('targetSite') || "social media";
-  const tabId = searchParams.get('tabId');
-
-  const navigate = useNavigate();
-
-  const onContinue = (e: React.MouseEvent<HTMLButtonElement>)=>{
+  const onContinue = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
-    navigate(`/intention-check?targetSite=${targetSite}&tabId=${tabId}`);
-  }
+    navigate("intention-check", { target: targetSite, tabId });
+  };
 
-  const [breathCount, setBreatheCount] = useState(0)
-  const [showReflection, setShowReflection] = useState(false)
-  const [showContinue, setShowContinue] = useState(false)
+  const [breathCount, setBreatheCount] = useState(0);
+  const [showReflection, setShowReflection] = useState(false);
+  const [showContinue, setShowContinue] = useState(false);
 
   useEffect(() => {
     // Show reflection questions after 30 seconds
     const reflectionTimer = setTimeout(() => {
-      setShowReflection(true)
-    }, 30000)
+      setShowReflection(true);
+    }, 30000);
 
     // Show continue button after 1 minute
     const continueTimer = setTimeout(() => {
-      setShowContinue(true)
-    }, 60000)
+      setShowContinue(true);
+    }, 60000);
 
     return () => {
-      clearTimeout(reflectionTimer)
-      clearTimeout(continueTimer)
-    }
-  }, [])
+      clearTimeout(reflectionTimer);
+      clearTimeout(continueTimer);
+    };
+  }, []);
 
   const handleBreathe = () => {
-    setBreatheCount((prev) => prev + 1)
+    setBreatheCount((prev) => prev + 1);
     if (breathCount >= 2) {
       // If user completes 3 breaths, show reflection and continue earlier
-      setShowReflection(true)
-      setTimeout(() => setShowContinue(true), 15000) // Show continue 15s after completing breaths
+      setShowReflection(true);
+      setTimeout(() => setShowContinue(true), 15000); // Show continue 15s after completing breaths
     }
-  }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center p-4">
@@ -67,9 +67,12 @@ export default function MindfulPause() {
 
           {/* Main Message */}
           <div className="flex flex-col gap-4 animate-fade-in">
-            <h1 className="text-3xl font-light text-gray-800">Take a mindful moment</h1>
+            <h1 className="text-3xl font-light text-gray-800">
+              Take a mindful moment
+            </h1>
             <p className="text-lg text-gray-600 leading-relaxed">
-              You were about to visit <span className="font-medium text-blue-600">{targetSite}</span>.
+              You were about to visit{" "}
+              <span className="font-medium text-blue-600">{targetSite}</span>.
               <br />
               Let's pause and check in with yourself first.
             </p>
@@ -95,7 +98,9 @@ export default function MindfulPause() {
           {/* Reflection Questions */}
           {showReflection && (
             <div className="bg-blue-50/50 rounded-lg p-6 flex flex-col gap-3 animate-fade-in">
-              <h3 className="font-medium text-gray-700 mb-4">Gentle reflection:</h3>
+              <h3 className="font-medium text-gray-700 mb-4">
+                Gentle reflection:
+              </h3>
               <div className="flex flex-col gap-2 text-sm text-gray-600">
                 <p>• How are you feeling right now?</p>
                 <p>• What brought you here in this moment?</p>
@@ -126,5 +131,5 @@ export default function MindfulPause() {
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }
