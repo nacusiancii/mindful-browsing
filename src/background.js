@@ -4,13 +4,20 @@
  * It initializes the extension, sets up listeners, and orchestrates the different modules.
  */
 
-// --- Temporary Bypass Set ---
+// --- Session Bypass Map ---
 /**
- * Set to track temporary bypasses for tabId + hostname combinations.
- * This prevents infinite loops when redirecting to mindful pause pages.
- * @type {Set<string>}
+ * Map to track session bypasses for tabId + hostname combinations with timestamps.
+ * This prevents infinite loops when redirecting to mindful pause pages and allows
+ * refreshing within a session window.
+ * @type {Map<string, number>}
  */
-const TEMPORARY_BYPASS = new Set();
+const SESSION_BYPASS = new Map();
+
+/**
+ * Expiration time for session bypasses (5 minutes in milliseconds).
+ * @type {number}
+ */
+const BYPASS_EXPIRATION_TIME = 5 * 60 * 1000; // 5 minutes
 // --- Storage Utilities ---
 /**
  * Retrieves state from chrome.storage.sync.
@@ -20,6 +27,21 @@ const TEMPORARY_BYPASS = new Set();
 const getState = (keys = null) =>
   new Promise((resolve) => chrome.storage.sync.get(keys, resolve));
 
+/**
+ * Cleans up expired entries from the SESSION_BYPASS Map.
+ * This function should be called periodically to prevent memory leaks.
+ */
+const cleanupExpiredBypasses = () => {
+  const currentTime = Date.now();
+  for (const [key, timestamp] of SESSION_BYPASS.entries()) {
+    if (currentTime - timestamp >= BYPASS_EXPIRATION_TIME) {
+      SESSION_BYPASS.delete(key);
+    }
+  }
+};
+
+// Run cleanup every 2 minutes
+setInterval(cleanupExpiredBypasses, 2 * 60 * 1000);
 /**
  * Updates the state in chrome.storage.sync.
  * @param {object} newState - An object containing the key-value pairs to update.
@@ -83,12 +105,20 @@ const handleNav = async (details) => {
     );
 
     if (isMindfulSite) {
-      // Check for temporary bypass
+      // Check for session bypass
       const bypassKey = `${details.tabId}_${url.hostname}`;
-      if (TEMPORARY_BYPASS.has(bypassKey)) {
-        // Remove the bypass and allow navigation to proceed
-        TEMPORARY_BYPASS.delete(bypassKey);
-        return;
+      const bypassTimestamp = SESSION_BYPASS.get(bypassKey);
+
+      if (bypassTimestamp) {
+        // Check if bypass is still valid (within 5-minute window)
+        const currentTime = Date.now();
+        if (currentTime - bypassTimestamp < BYPASS_EXPIRATION_TIME) {
+          // Allow navigation to proceed without removing the bypass
+          return;
+        } else {
+          // Bypass has expired, remove it
+          SESSION_BYPASS.delete(bypassKey);
+        }
       }
 
       const pauseUrl = chrome.runtime.getURL("mindful-pause.html");
@@ -121,9 +151,9 @@ const MESSAGE_HANDLERS = {
       intention,
     });
 
-    // Add temporary bypass before updating the tab URL
+    // Add session bypass with timestamp before updating the tab URL
     const bypassKey = `${tabId}_${new URL(targetSite).hostname}`;
-    TEMPORARY_BYPASS.add(bypassKey);
+    SESSION_BYPASS.set(bypassKey, Date.now());
 
     chrome.tabs.update(tabId, { url: targetSite });
   },
