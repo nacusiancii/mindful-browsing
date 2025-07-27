@@ -200,7 +200,7 @@ export default function Popup() {
                 <div className="text-lg font-semibold text-green-600">
                   {todayStats.mindfulChoices}
                 </div>
-                <div className="text-xs text-gray-500">Mindful</div>
+                <div className="text-xs text-gray-500">Continues</div>
               </div>
               <div className="flex flex-col gap-1">
                 <div className="text-lg font-semibold text-purple-600">
