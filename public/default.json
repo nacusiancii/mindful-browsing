@@ -15,8 +15,8 @@
     "showStats": true,
     "gentleReminders": true,
     "soundEnabled": false,
-    "pauseDuration": 30,
-    "reflectionDelay": 20,
+    "pauseDuration": 15,
+    "reflectionDelay": 30,
     "darkMode": false
   },
   "reflectionPrompts": [
