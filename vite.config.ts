@@ -19,7 +19,6 @@ export default defineConfig({
         // Extension entry points
         background: resolve(__dirname, "src/background.js"),
         content: resolve(__dirname, "src/content.ts"),
-        default: resolve(__dirname, "src/default.js"),
 
         // Extension pages
         popup: resolve(__dirname, "src/popup-main.tsx"),

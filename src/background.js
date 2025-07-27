@@ -22,10 +22,16 @@ const setState = (newState) =>
   new Promise((resolve) => chrome.storage.sync.set(newState, resolve));
 
 // --- Default State ---
-// Import default state script - this makes defaultState available globally
-importScripts("default.js");
-// Now we can access defaultState directly from the global scope
-const { defaultState } = self;
+// Function to load default state from JSON file
+const loadDefaultState = async () => {
+  try {
+    const response = await fetch(chrome.runtime.getURL("default.json"));
+    return await response.json();
+  } catch (error) {
+    console.error("Failed to load default state:", error);
+    return {}; // Fallback to empty object
+  }
+};
 
 // --- Activity Logger ---
 /**
@@ -136,8 +142,9 @@ chrome.runtime.onInstalled.addListener((details) => {
   console.log("Mindful Browsing extension installed/updated", details);
   if (details.reason === "install") {
     // On first install, populate storage with default state
-    setState(defaultState);
-
+    loadDefaultState()
+      .then((defaultState) => setState(defaultState))
+      .catch((error) => console.error("Failed to set default state:", error));
     // Open the onboarding page for the user
     chrome.tabs.create({ url: "onboarding.html" });
   }
@@ -153,3 +160,12 @@ console.log("Initializing message listener");
 addMessageListener();
 
 console.log("Mindful Browsing service worker started.");
+// --- Initialize Default State if not present ---
+getState().then((state) => {
+  if (!state || Object.keys(state).length === 0) {
+    console.log("No state found, initializing with default state.");
+    loadDefaultState()
+      .then((defaultState) => setState(defaultState))
+      .catch((error) => console.error("Failed to set default state:", error));
+  }
+});

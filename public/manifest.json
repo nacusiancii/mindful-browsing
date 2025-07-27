@@ -42,7 +42,8 @@
         "assets/*.css",
         "icons/*.png",
         "onboarding.html",
-        "mindful-pause.html"
+        "mindful-pause.html",
+        "default.json"
       ],
       "matches": ["<all_urls>"]
     }
