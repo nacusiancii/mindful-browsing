@@ -147,7 +147,7 @@ export default function Popup() {
             <Button
               variant="ghost"
               size="sm"
-              className="p-2"
+              className="p-2 group relative"
               onClick={() => {
                 // Open options page
                 chrome.tabs.create({
@@ -155,7 +155,7 @@ export default function Popup() {
                 });
               }}
             >
-              <Settings className="h-4 w-4" />
+              <Settings className="h-4 w-4 transition-transform group-hover:scale-110" />
             </Button>
           </div>
         </CardHeader>
