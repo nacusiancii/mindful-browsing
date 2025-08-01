@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Button } from "../components/ui/button";
 import { Card, CardContent } from "../components/ui/card";
 import { Leaf, Clock, Heart } from "lucide-react";
+import { TruncatedUrl } from "../components/ui/truncated-url";
 
 interface MindfulPauseProps {
   navigate: (page: string, params?: Record<string, string>) => void;
@@ -121,9 +122,10 @@ export default function MindfulPause({ navigate }: MindfulPauseProps) {
                 </h1>
                 <p className="text-lg text-gray-600 leading-relaxed">
                   You were about to visit{" "}
-                  <span className="font-medium text-blue-600">
-                    {targetSite}
-                  </span>
+                  <TruncatedUrl
+                    url={targetSite}
+                    className="font-medium text-blue-600"
+                  />
                   .
                   <br />
                   Let's pause and check in with yourself first.

@@ -7,6 +7,7 @@ import {
   CardTitle,
 } from "../components/ui/card";
 import { Textarea } from "../components/ui/textarea";
+import { TruncatedUrl } from "../components/ui/truncated-url";
 import {
   Sparkles,
   Coffee,
@@ -242,7 +243,10 @@ export default function IntentionCheck({
           </CardTitle>
           <p className="text-gray-600 mt-2">
             You're about to visit{" "}
-            <span className="font-medium text-indigo-600">{targetSite}</span>
+            <TruncatedUrl
+              url={targetSite}
+              className="font-medium text-indigo-600"
+            />
           </p>
         </CardHeader>
 
