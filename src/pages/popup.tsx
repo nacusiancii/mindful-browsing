@@ -144,7 +144,17 @@ export default function Popup() {
                 <p className="text-xs text-gray-500">Stay present online</p>
               </div>
             </div>
-            <Button variant="ghost" size="sm" className="p-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="p-2"
+              onClick={() => {
+                // Open options page
+                chrome.tabs.create({
+                  url: chrome.runtime.getURL("options.html"),
+                });
+              }}
+            >
               <Settings className="h-4 w-4" />
             </Button>
           </div>
