@@ -4,7 +4,7 @@
   "version": "1.0.1",
   "description": "A Chrome extension that helps create mental barriers before accessing potentially distracting websites",
   "author": "Murali Krishna Kurapati",
-  "permissions": ["storage", "activeTab", "background", "webNavigation"],
+  "permissions": ["storage", "webNavigation"],
   "host_permissions": ["<all_urls>"],
   "background": {
     "service_worker": "background.js"
