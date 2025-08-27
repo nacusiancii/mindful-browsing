@@ -63,12 +63,26 @@ export default function Onboarding() {
       subtitle: "Select websites where you'd like a mindful pause",
       content: (
         <div className="flex flex-col gap-6">
+          <div className="bg-gray-50/50 border border-gray-200 rounded-lg p-4">
+            <h3 className="font-medium text-gray-800 mb-3">Take a moment to reflect:</h3>
+            <div className="flex flex-col gap-2 text-sm text-gray-600">
+              <p>• Which websites do you find yourself visiting compulsively?</p>
+              <p>• Which sites distract you from work, sleep, or meaningful activities?</p>
+              <p>• Which platforms make you lose track of time most often?</p>
+            </div>
+          </div>
+
           <p className="text-gray-600 text-center">
             These are sites where you'll get a gentle reminder to pause and reflect before browsing.
           </p>
 
           <div className="flex flex-col gap-4">
-            <h3 className="font-medium text-gray-700">Common sites:</h3>
+            <div className="flex items-center justify-between">
+              <h3 className="font-medium text-gray-700">Common sites:</h3>
+              <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
+                Selected: {blockedSites.length}
+              </span>
+            </div>
             <div className="flex flex-wrap gap-2">
               {commonSites.map((site) => (
                 <Badge
@@ -149,8 +163,9 @@ export default function Onboarding() {
           </div>
           <div className="flex flex-col gap-4">
             <p className="text-lg text-gray-600">
-              Perfect! You've set up {blockedSites.length} sites for mindful browsing.
+              Perfect! You've set up <span className="font-medium text-blue-600">{blockedSites.length}</span> sites for mindful browsing.
             </p>
+
             <div className="bg-blue-50 rounded-lg p-6 flex flex-col gap-3">
               <h3 className="font-medium text-gray-700">What happens next:</h3>
               <div className="flex flex-col gap-2 text-sm text-gray-600 text-left">
