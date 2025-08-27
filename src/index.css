@@ -63,3 +63,44 @@ body {
     color: var(--color-foreground);
   }
 }
+
+/* Add cursor pointer to interactive elements */
+@layer base {
+  /* Add pointer cursor to all button elements */
+  button {
+    cursor: pointer;
+  }
+  
+  /* Add pointer cursor to all input elements */
+  input {
+    cursor: pointer;
+  }
+  
+  /* Add pointer cursor to all textarea elements */
+  textarea {
+    cursor: pointer;
+  }
+  
+  /* Add pointer cursor to all select elements */
+  select {
+    cursor: pointer;
+  }
+  
+  /* Add pointer cursor to slider thumb - this is what users interact with */
+  [class*="thumb"] {
+    cursor: pointer;
+  }
+  
+  /* Add pointer cursor to tab triggers */
+  [data-radix-collection-item] {
+    cursor: pointer;
+  }
+  
+  /* Ensure disabled elements show not-allowed cursor */
+  button:disabled,
+  input:disabled,
+  textarea:disabled,
+  select:disabled {
+    cursor: not-allowed;
+  }
+}
