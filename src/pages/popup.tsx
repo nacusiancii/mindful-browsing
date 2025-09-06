@@ -10,7 +10,7 @@ import {
   Clock,
   Sparkles,
 } from "lucide-react";
-import type { ActivityLogItem } from "../default";
+import type { ActivityLogItem } from "../common";
 
 // Define types for our data
 type ActivityItem = {

@@ -18,7 +18,7 @@ import {
   Clock,
   Heart,
 } from "lucide-react";
-import type { MindfulBreak } from "../default";
+import type { MindfulBreak } from "../common";
 
 interface IntentionCheckProps {
   navigate: (page: string, params?: Record<string, string>) => void;
