@@ -17,8 +17,12 @@ const LOCAL_SCHEMA_VERSION = SCHEMA_VERSIONS.LOCAL.LOG_ACTIVITY;
 const SYNC_SCHEMA_VERSION = SCHEMA_VERSIONS.SYNC.BASE;
 let isMigrationRunning = false;
 
-const isSchemaMigrationNeeded = (localState, syncState) => 
-  localState?.localSchemaVersion < LOCAL_SCHEMA_VERSION || syncState?.syncSchemaVersion < SYNC_SCHEMA_VERSION;
+const isSchemaMigrationNeeded = (localState, syncState) => {
+  const localSchemaVersion = localState?.localSchemaVersion || SCHEMA_VERSIONS.LOCAL.BASE;
+  const syncSchemaVersion = syncState?.syncSchemaVersion || SCHEMA_VERSIONS.SYNC.BASE;
+  return localSchemaVersion < LOCAL_SCHEMA_VERSION || syncSchemaVersion < SYNC_SCHEMA_VERSION;
+};
+
 
 const promisifyChromeStorage = (storageObj, methodName, ...args) =>
   new Promise((resolve,reject) => storageObj[methodName](...args, (...cbArgs)=>{
