@@ -19,7 +19,6 @@ export interface DefaultState {
   settings: Settings;
   reflectionPrompts: string[];
   mindfulBreaks: MindfulBreak[];
-  activityLog: ActivityLogItem[];
 }
 
 export interface ActivityLogItem {
