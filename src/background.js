@@ -110,6 +110,10 @@ const migrateActivityLogData =() => {
     });
 };
 
+// since only migration as of now, directly calling that migration function
+const migrateLocalSchema = () => migrateActivityLogData();
+// no sync schema as of now, simply resolving
+const migrateSyncSchema = () => Promise.resolve();
 
 // --- Activity Logger ---
 /**
@@ -266,8 +270,14 @@ chrome.runtime.onInstalled.addListener((details) => {
     chrome.tabs.create({ url: "onboarding.html" });
   } else if (details.reason === "update") {
     console.log("Extension updated, checking for data migration...");
-    migrateActivityLogData()
-      .catch((error) => console.error("Failed to migrate activity log data:", error));
+    getLocalState('localSchemaVersion')
+      .then((result) => (result?.localSchemaVersion || 0) < LOCAL_SCHEMA_VERSION)
+      .then((shouldMigrate) => shouldMigrate ? migrateLocalSchema() : Promise.resolve())
+      .catch((error) => console.error("Failed to execute local schema migration:", error));
+    getState('syncSchemaVersion')
+      .then((result) => (result?.syncSchemaVersion || 0) < SYNC_SCHEMA_VERSION)
+      .then((shouldMigrate) => shouldMigrate ? migrateSyncSchema() : Promise.resolve())
+      .catch((error) => console.error("Failed to execute sync schema migration:", error));
   }
 });
 
@@ -293,9 +303,13 @@ getState().then((state) => {
         ...localState, localSchemaVersion: LOCAL_SCHEMA_VERSION}))
       .catch((error) => console.error("Failed to set default state:", error));
   } else {
-    setTimeout(() => {
-      migrateActivityLogData()
-        .catch((error) => console.error("Failed to migrate activity log data:", error));
-    }, 2000); // wait 2 seconds to not clash with on update listener
+    getLocalState('localSchemaVersion')
+      .then((result) => (result?.localSchemaVersion || 0) < LOCAL_SCHEMA_VERSION)
+      .then((shouldMigrate) => shouldMigrate ? migrateLocalSchema() : Promise.resolve())
+      .catch((error) => console.error("Failed to execute local schema migration:", error));
+    getState('syncSchemaVersion')
+      .then((result) => (result?.syncSchemaVersion || 0) < SYNC_SCHEMA_VERSION)
+      .then((shouldMigrate) => shouldMigrate ? migrateSyncSchema() : Promise.resolve())
+      .catch((error) => console.error("Failed to execute sync schema migration:", error));
   }
 });
