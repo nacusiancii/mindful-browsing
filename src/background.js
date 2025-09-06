@@ -117,6 +117,8 @@ const migrateActivityLogData = () => {
     .then((finalActivityLog) => setLocalState({ activityLog: finalActivityLog }))
     .then(() => promisifyChromeStorage(chrome.storage.sync, 'remove', ['activityLog']))
     .then(() => setLocalState({ localSchemaVersion: SCHEMA_VERSIONS.LOCAL.LOG_ACTIVITY }))
+    .then(() => getState('syncSchemaVersion'))
+    .then((state) => (state?.syncSchemaVersion) ?? setState({syncSchemaVersion: SCHEMA_VERSIONS.SYNC.BASE}))
     .then(() => {
       console.log("Activity log migration completed successfully");
       return true;
