@@ -4,10 +4,30 @@
  * It initializes the extension, sets up listeners, and orchestrates the different modules.
  */
 
-const LOG_ACTIVITY_LOCAL_SCHEMA_VERSION = 1;
-const LOCAL_SCHEMA_VERSION = 1;
-const SYNC_SCHEMA_VERSION = 0;
+const SCHEMA_VERSIONS = {
+  LOCAL: {
+    LOG_ACTIVITY: 1,
+    BASE: 0
+  },
+  SYNC: {
+    BASE: 0
+  }
+}
+const LOCAL_SCHEMA_VERSION = SCHEMA_VERSIONS.LOCAL.LOG_ACTIVITY;
+const SYNC_SCHEMA_VERSION = SCHEMA_VERSIONS.SYNC.BASE;
 let isMigrationRunning = false;
+
+const isSchemaMigrationNeeded = (localState, syncState) => 
+  localState?.localSchemaVersion < LOCAL_SCHEMA_VERSION || syncState?.syncSchemaVersion < SYNC_SCHEMA_VERSION;
+
+const promisifyChromeStorage = (storageObj, methodName, ...args) =>
+  new Promise((resolve,reject) => storageObj[methodName](...args, (...cbArgs)=>{
+    if (chrome.runtime.lastError) return reject(chrome.runtime.lastError);
+
+    if (cbArgs.length === 0) return resolve();
+    if (cbArgs.length === 1) return resolve(cbArgs[0]);
+    return resolve(cbArgs);
+  }));
 
 // --- Session Bypass Map ---
 /**
@@ -34,8 +54,8 @@ const cleanupExpiredBypasses = () => {
  * @param {string|string[]|null} keys - A key or array of keys to retrieve. If null, retrieves the entire state.
  * @returns {Promise<object>} A promise that resolves with the retrieved state object.
  */
-const getState = (keys = null) =>
-  new Promise((resolve) => chrome.storage.sync.get(keys, resolve));
+const getState = (keys = null) => 
+  promisifyChromeStorage(chrome.storage.sync, 'get', keys);
 
 /**
  * Updates the state in chrome.storage.sync.
@@ -43,7 +63,7 @@ const getState = (keys = null) =>
  * @returns {Promise<void>} A promise that resolves when the state has been updated.
  */
 const setState = (newState) =>
-  new Promise((resolve) => chrome.storage.sync.set(newState, resolve));
+  promisifyChromeStorage(chrome.storage.sync, 'set', newState);
 
 /**
  * Retrieves state from chrome.storage.local.
@@ -51,7 +71,7 @@ const setState = (newState) =>
  * @returns {Promise<object>} A promise that resolves with the retrieved state object.
  */
 const getLocalState = (keys = null) =>
-  new Promise((resolve) => chrome.storage.local.get(keys, resolve));
+  promisifyChromeStorage(chrome.storage.local, 'get', keys);
 
 /**
  * Updates the state in chrome.storage.local.
@@ -59,7 +79,7 @@ const getLocalState = (keys = null) =>
  * @returns {Promise<void>} A promise that resolves when the state has been updated.
  */
 const setLocalState = (newState) =>
-  new Promise((resolve) => chrome.storage.local.set(newState, resolve));
+  promisifyChromeStorage(chrome.storage.local, 'set', newState);
 
 // Run cleanup every 2 minutes
 setInterval(cleanupExpiredBypasses, 2 * 60 * 1000);
@@ -91,8 +111,8 @@ const migrateActivityLogData = () => {
       ...(localData?.activityLog || [])
     ].sort((a, b) => b.timestamp - a.timestamp).slice(0, 1000))
     .then((finalActivityLog) => setLocalState({ activityLog: finalActivityLog }))
-    .then(() => new Promise((resolve) => chrome.storage.sync.remove(['activityLog'], resolve)))
-    .then(() => setLocalState({ localSchemaVersion: LOG_ACTIVITY_LOCAL_SCHEMA_VERSION }))
+    .then(() => promisifyChromeStorage(chrome.storage.sync, 'remove', ['activityLog']))
+    .then(() => setLocalState({ localSchemaVersion: SCHEMA_VERSIONS.LOCAL.LOG_ACTIVITY }))
     .then(() => {
       console.log("Activity log migration completed successfully");
       return true;
@@ -103,9 +123,9 @@ const migrateActivityLogData = () => {
     });
 
   return getLocalState('localSchemaVersion')
-    .then((localState) => localState?.localSchemaVersion || 0)
-    .catch(() => 0) // default to 0 if localSchemaVersion fetch fails
-    .then((localSchemaVersion) => localSchemaVersion < LOG_ACTIVITY_LOCAL_SCHEMA_VERSION)
+    .then((localState) => localState?.localSchemaVersion || SCHEMA_VERSIONS.LOCAL.BASE)
+    .catch(() => SCHEMA_VERSIONS.LOCAL.BASE) // default to 0 if localSchemaVersion fetch fails
+    .then((localSchemaVersion) => localSchemaVersion < SCHEMA_VERSIONS.LOCAL.LOG_ACTIVITY)
     .then((shouldMigrate) => {
       if (shouldMigrate) {
         console.log("Starting activity log data migration...");
@@ -121,7 +141,7 @@ const migrateActivityLogData = () => {
 };
 
 // since only migration as of now, directly calling that migration function
-const performMigrationsInChronologicalOrder = () => {
+const performMigrations = () => {
   if (isMigrationRunning) return;
   isMigrationRunning = true;
   migrateActivityLogData()
@@ -199,7 +219,7 @@ const handleNav = async (details) => {
 };
 
 // --- Message Handler ---
-const MESSAGE_HANDLERS = {
+const messageHandlers = {
   async getInitialData() {
     return {
       ...(await getState()),
@@ -254,7 +274,7 @@ const MESSAGE_HANDLERS = {
 const addMessageListener = () => {
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     try {
-      const handler = MESSAGE_HANDLERS[message.action];
+      const handler = messageHandlers[message.action];
       if (!handler) {
         console.warn("Unknown message action:", message.action);
         return;
@@ -286,7 +306,7 @@ chrome.runtime.onInstalled.addListener((details) => {
     Promise.all([getLocalState('localSchemaVersion'), getState('syncSchemaVersion')])
       .then(([localState, syncState]) => {
         if (isSchemaMigrationNeeded(localState, syncState)) {
-          performMigrationsInChronologicalOrder();
+          performMigrations();
         }
       })
       .catch((error) => console.error("Failed to execute schema migration:", error));
@@ -318,14 +338,9 @@ getState().then((state) => {
     Promise.all([getLocalState('localSchemaVersion'), getState('syncSchemaVersion')])
       .then(([localState, syncState]) => {
         if (isSchemaMigrationNeeded(localState, syncState)) {
-          performMigrationsInChronologicalOrder();
+          performMigrations();
         }
       })
       .catch((error) => console.error("Failed to execute schema migration:", error));
   }
 });
-
-const isSchemaMigrationNeeded = (localState, syncState) => {
-  return localState?.localSchemaVersion < LOCAL_SCHEMA_VERSION 
-    || syncState?.syncSchemaVersion < SYNC_SCHEMA_VERSION;
-};
