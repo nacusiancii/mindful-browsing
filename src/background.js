@@ -4,6 +4,10 @@
  * It initializes the extension, sets up listeners, and orchestrates the different modules.
  */
 
+const LOG_ACTIVITY_LOCAL_SCHEMA_VERSION = 1;
+const LOCAL_SCHEMA_VERSION = 1;
+const SYNC_SCHEMA_VERSION = 0;
+
 // --- Session Bypass Map ---
 /**
  * Map to track session bypasses for tabId + hostname combinations with timestamps.
@@ -45,7 +49,7 @@ const setState = (newState) =>
  * @param {string|string[]|null} keys - A key or array of keys to retrieve. If null, retrieves the entire state.
  * @returns {Promise<object>} A promise that resolves with the retrieved state object.
  */
-const getLocalState = (kays = null) =>
+const getLocalState = (keys = null) =>
   new Promise((resolve) => chrome.storage.local.get(keys, resolve));
 
 /**
@@ -71,9 +75,45 @@ const loadDefaultState = async () => {
   }
 };
 
+// --- Data Migration ---
+/**
+ * Migrates activityLog from chrome.storage.sync to chrome.storage.local.
+ * This function is idempotent and safe to run multiple times.
+ * @returns {Promise<boolean>} True if migration was performed, false if not needed
+ */
+const migrateActivityLogData =() => {
+
+  const performMigration = () => Promise.all([
+    getState('activityLog'),
+    getLocalState('activityLog')
+  ]).then(([syncData, localData]) => [
+      ...(syncData?.activityLog || []), 
+      ...(localData?.activityLog || [])
+    ].sort((a, b) => b.timestamp - a.timestamp).slice(0, 1000))
+    .then((finalActivityLog) => setLocalState({ activityLog: finalActivityLog }))
+    .then(() => new Promise((resolve) => chrome.storage.sync.remove(['activityLog'], resolve)))
+    .then(() => setLocalState({ localSchemaVersion: LOG_ACTIVITY_LOCAL_SCHEMA_VERSION }))
+    .then(() => true)
+    .catch((error) => {
+      console.error("Failed to migrate activity log data:", error);
+      return false;
+    });
+
+  return getLocalState('localSchemaVersion')
+    .then((localState) => localState.localSchemaVersion || 0)
+    .catch((error) => 0) // default to 0 if localSchemaVersion fetch fails
+    .then((localSchemaVersion) => localSchemaVersion < LOG_ACTIVITY_LOCAL_SCHEMA_VERSION)
+    .then((shouldMigrate) => shouldMigrate ? performMigration() : false)
+    .catch((error) => {
+      console.error("Failed to migrate activity log data:", error);
+      return false;
+    });
+};
+
+
 // --- Activity Logger ---
 /**
- * Logs a new activity to the activityLog in chrome.storage.
+ * Logs a new activity to the activityLog in chrome.storage.local.
  * @param {object} activity - The activity object to log.
  * @prop {string} activity.site - The site the activity relates to.
  * @prop {number} activity.timestamp - The timestamp of the activity.
@@ -216,6 +256,7 @@ const addMessageListener = () => {
 // --- Installation Listener ---
 chrome.runtime.onInstalled.addListener((details) => {
   console.log("Mindful Browsing extension installed/updated", details);
+  
   if (details.reason === "install") {
     // On first install, populate storage with default state
     loadDefaultState()
@@ -223,6 +264,10 @@ chrome.runtime.onInstalled.addListener((details) => {
       .catch((error) => console.error("Failed to set default state:", error));
     // Open the onboarding page for the user
     chrome.tabs.create({ url: "onboarding.html" });
+  } else if (details.reason === "update") {
+    console.log("Extension updated, checking for data migration...");
+    migrateActivityLogData()
+      .catch((error) => console.error("Failed to migrate activity log data:", error));
   }
 });
 
@@ -241,7 +286,16 @@ getState().then((state) => {
   if (!state || Object.keys(state).length === 0) {
     console.log("No state found, initializing with default state.");
     loadDefaultState()
-      .then((defaultState) => setState(defaultState))
+      .then((defaultState) => setState({...defaultState, 
+        syncSchemaVersion: SYNC_SCHEMA_VERSION}))
+      .then(() => getLocalState())
+      .then((localState) => setLocalState({
+        ...localState, localSchemaVersion: LOCAL_SCHEMA_VERSION}))
       .catch((error) => console.error("Failed to set default state:", error));
+  } else {
+    setTimeout(() => {
+      migrateActivityLogData()
+        .catch((error) => console.error("Failed to migrate activity log data:", error));
+    }, 2000); // wait 2 seconds to not clash with on update listener
   }
 });

@@ -27,6 +27,13 @@ export interface ActivityLogItem {
   action: string;
   intention?: string;
   breakActivity?: string;
-};
+}
+
+export interface LocalState {
+  activityLog?: ActivityLogItem[];
+  migrationVersion?: number;
+}
+
+export interface ExtendedState extends DefaultState, LocalState {}
 
 export declare const defaultState: DefaultState;
