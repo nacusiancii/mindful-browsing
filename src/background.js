@@ -83,9 +83,9 @@ const loadDefaultState = async () => {
  */
 const logActivity = async (activity) => {
   try {
-    const { activityLog = [] } = await getState("activityLog");
-    const newLog = [activity, ...activityLog].slice(0, 1000);
-    await setState({ activityLog: newLog });
+    const { activityLog } = await getLocalState("activityLog");
+    const newLog = [activity, ...(activityLog || [])].slice(0, 1000);
+    await setLocalState({ activityLog: newLog });
   } catch (error) {
     console.error(error);
   }
@@ -144,7 +144,10 @@ const handleNav = async (details) => {
 // --- Message Handler ---
 const MESSAGE_HANDLERS = {
   async getInitialData() {
-    return getState();
+    return {
+      ...(await getState()),
+      ...(await getLocalState()),
+    };
   },
 
   async saveState(payload) {
