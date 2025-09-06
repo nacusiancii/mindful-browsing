@@ -247,7 +247,7 @@ const messageHandlers = {
     chrome.tabs.update(tabId, { url: targetSite });
   },
 
-  async tookMindfulBreak({ targetSite, breakActivity, tabId }) {
+  async tookMindfulBreak({ targetSite, breakActivity }) {
     await logActivity({
       site: new URL(targetSite).hostname,
       timestamp: Date.now(),
@@ -256,12 +256,11 @@ const messageHandlers = {
     });
   },
 
-  async logPause({ site, timestamp, tabId }) {
+  async logPause({ site, timestamp }) {
     await logActivity({
       site: new URL(site).hostname,
       timestamp: timestamp || Date.now(),
       action: "took_pause",
-      tabId,
     });
   },
 
