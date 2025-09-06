@@ -31,9 +31,13 @@ export interface ActivityLogItem {
 
 export interface LocalState {
   activityLog?: ActivityLogItem[];
-  migrationVersion?: number;
+  localSchemaVersion?: number;
 }
 
-export interface ExtendedState extends DefaultState, LocalState {}
+export interface SyncState extends DefaultState {
+  syncSchemaVersion?: number;
+}
+
+export interface ExtendedState extends SyncState, LocalState {}
 
 export declare const defaultState: DefaultState;

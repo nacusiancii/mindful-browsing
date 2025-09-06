@@ -7,6 +7,7 @@
 const LOG_ACTIVITY_LOCAL_SCHEMA_VERSION = 1;
 const LOCAL_SCHEMA_VERSION = 1;
 const SYNC_SCHEMA_VERSION = 0;
+let isMigrationRunning = false;
 
 // --- Session Bypass Map ---
 /**
@@ -81,8 +82,7 @@ const loadDefaultState = async () => {
  * This function is idempotent and safe to run multiple times.
  * @returns {Promise<boolean>} True if migration was performed, false if not needed
  */
-const migrateActivityLogData =() => {
-
+const migrateActivityLogData = () => {
   const performMigration = () => Promise.all([
     getState('activityLog'),
     getLocalState('activityLog')
@@ -93,27 +93,40 @@ const migrateActivityLogData =() => {
     .then((finalActivityLog) => setLocalState({ activityLog: finalActivityLog }))
     .then(() => new Promise((resolve) => chrome.storage.sync.remove(['activityLog'], resolve)))
     .then(() => setLocalState({ localSchemaVersion: LOG_ACTIVITY_LOCAL_SCHEMA_VERSION }))
-    .then(() => true)
+    .then(() => {
+      console.log("Activity log migration completed successfully");
+      return true;
+    })
     .catch((error) => {
       console.error("Failed to migrate activity log data:", error);
       return false;
     });
 
   return getLocalState('localSchemaVersion')
-    .then((localState) => localState.localSchemaVersion || 0)
-    .catch((error) => 0) // default to 0 if localSchemaVersion fetch fails
+    .then((localState) => localState?.localSchemaVersion || 0)
+    .catch(() => 0) // default to 0 if localSchemaVersion fetch fails
     .then((localSchemaVersion) => localSchemaVersion < LOG_ACTIVITY_LOCAL_SCHEMA_VERSION)
-    .then((shouldMigrate) => shouldMigrate ? performMigration() : false)
+    .then((shouldMigrate) => {
+      if (shouldMigrate) {
+        console.log("Starting activity log data migration...");
+        return performMigration();
+      }
+      console.log("Activity log migration not needed, skipping...");
+      return false;
+    })
     .catch((error) => {
-      console.error("Failed to migrate activity log data:", error);
+      console.error("Failed to check migration status:", error);
       return false;
     });
 };
 
 // since only migration as of now, directly calling that migration function
-const migrateLocalSchema = () => migrateActivityLogData();
-// no sync schema as of now, simply resolving
-const migrateSyncSchema = () => Promise.resolve();
+const performMigrationsInChronologicalOrder = () => {
+  if (isMigrationRunning) return;
+  isMigrationRunning = true;
+  migrateActivityLogData()
+    .finally(() => isMigrationRunning = false);
+};
 
 // --- Activity Logger ---
 /**
@@ -270,14 +283,13 @@ chrome.runtime.onInstalled.addListener((details) => {
     chrome.tabs.create({ url: "onboarding.html" });
   } else if (details.reason === "update") {
     console.log("Extension updated, checking for data migration...");
-    getLocalState('localSchemaVersion')
-      .then((result) => (result?.localSchemaVersion || 0) < LOCAL_SCHEMA_VERSION)
-      .then((shouldMigrate) => shouldMigrate ? migrateLocalSchema() : Promise.resolve())
-      .catch((error) => console.error("Failed to execute local schema migration:", error));
-    getState('syncSchemaVersion')
-      .then((result) => (result?.syncSchemaVersion || 0) < SYNC_SCHEMA_VERSION)
-      .then((shouldMigrate) => shouldMigrate ? migrateSyncSchema() : Promise.resolve())
-      .catch((error) => console.error("Failed to execute sync schema migration:", error));
+    Promise.all([getLocalState('localSchemaVersion'), getState('syncSchemaVersion')])
+      .then(([localState, syncState]) => {
+        if (isSchemaMigrationNeeded(localState, syncState)) {
+          performMigrationsInChronologicalOrder();
+        }
+      })
+      .catch((error) => console.error("Failed to execute schema migration:", error));
   }
 });
 
@@ -303,13 +315,17 @@ getState().then((state) => {
         ...localState, localSchemaVersion: LOCAL_SCHEMA_VERSION}))
       .catch((error) => console.error("Failed to set default state:", error));
   } else {
-    getLocalState('localSchemaVersion')
-      .then((result) => (result?.localSchemaVersion || 0) < LOCAL_SCHEMA_VERSION)
-      .then((shouldMigrate) => shouldMigrate ? migrateLocalSchema() : Promise.resolve())
-      .catch((error) => console.error("Failed to execute local schema migration:", error));
-    getState('syncSchemaVersion')
-      .then((result) => (result?.syncSchemaVersion || 0) < SYNC_SCHEMA_VERSION)
-      .then((shouldMigrate) => shouldMigrate ? migrateSyncSchema() : Promise.resolve())
-      .catch((error) => console.error("Failed to execute sync schema migration:", error));
+    Promise.all([getLocalState('localSchemaVersion'), getState('syncSchemaVersion')])
+      .then(([localState, syncState]) => {
+        if (isSchemaMigrationNeeded(localState, syncState)) {
+          performMigrationsInChronologicalOrder();
+        }
+      })
+      .catch((error) => console.error("Failed to execute schema migration:", error));
   }
 });
+
+const isSchemaMigrationNeeded = (localState, syncState) => {
+  return localState?.localSchemaVersion < LOCAL_SCHEMA_VERSION 
+    || syncState?.syncSchemaVersion < SYNC_SCHEMA_VERSION;
+};
