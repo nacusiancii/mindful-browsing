@@ -9,15 +9,20 @@
  * Map to track session bypasses for tabId + hostname combinations with timestamps.
  * This prevents infinite loops when redirecting to mindful pause pages and allows
  * refreshing within a session window.
+ * Should be cleaned up periodically to prevent memory leaks.
  * @type {Map<string, number>}
  */
 const SESSION_BYPASS = new Map();
-
-/**
- * Expiration time for session bypasses (5 minutes in milliseconds).
- * @type {number}
- */
 const BYPASS_EXPIRATION_TIME = 5 * 60 * 1000; // 5 minutes
+const cleanupExpiredBypasses = () => {
+  const currentTime = Date.now();
+  for (const [key, timestamp] of SESSION_BYPASS.entries()) {
+    if (currentTime - timestamp >= BYPASS_EXPIRATION_TIME) {
+      SESSION_BYPASS.delete(key);
+    }
+  }
+};
+
 // --- Storage Utilities ---
 /**
  * Retrieves state from chrome.storage.sync.
@@ -28,27 +33,31 @@ const getState = (keys = null) =>
   new Promise((resolve) => chrome.storage.sync.get(keys, resolve));
 
 /**
- * Cleans up expired entries from the SESSION_BYPASS Map.
- * This function should be called periodically to prevent memory leaks.
- */
-const cleanupExpiredBypasses = () => {
-  const currentTime = Date.now();
-  for (const [key, timestamp] of SESSION_BYPASS.entries()) {
-    if (currentTime - timestamp >= BYPASS_EXPIRATION_TIME) {
-      SESSION_BYPASS.delete(key);
-    }
-  }
-};
-
-// Run cleanup every 2 minutes
-setInterval(cleanupExpiredBypasses, 2 * 60 * 1000);
-/**
  * Updates the state in chrome.storage.sync.
  * @param {object} newState - An object containing the key-value pairs to update.
  * @returns {Promise<void>} A promise that resolves when the state has been updated.
  */
 const setState = (newState) =>
   new Promise((resolve) => chrome.storage.sync.set(newState, resolve));
+
+/**
+ * Retrieves state from chrome.storage.local.
+ * @param {string|string[]|null} keys - A key or array of keys to retrieve. If null, retrieves the entire state.
+ * @returns {Promise<object>} A promise that resolves with the retrieved state object.
+ */
+const getLocalState = (kays = null) =>
+  new Promise((resolve) => chrome.storage.local.get(keys, resolve));
+
+/**
+ * Updates the state in chrome.storage.local.
+ * @param {object} newState - An object containing the key-value pairs to update.
+ * @returns {Promise<void>} A promise that resolves when the state has been updated.
+ */
+const setLocalState = (newState) =>
+  new Promise((resolve) => chrome.storage.local.set(newState, resolve));
+
+// Run cleanup every 2 minutes
+setInterval(cleanupExpiredBypasses, 2 * 60 * 1000);
 
 // --- Default State ---
 // Function to load default state from JSON file
