@@ -35,7 +35,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
-import { defaultState, type MindfulBreak, type Settings } from "../default.js";
+import { defaultState, type MindfulBreak, type Settings } from "../common.js";
 
 type MindfulBreakWithIcon = MindfulBreak & {
   icon: LucideIcon;

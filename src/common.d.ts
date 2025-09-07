@@ -19,7 +19,6 @@ export interface DefaultState {
   settings: Settings;
   reflectionPrompts: string[];
   mindfulBreaks: MindfulBreak[];
-  activityLog: ActivityLogItem[];
 }
 
 export interface ActivityLogItem {
@@ -28,6 +27,17 @@ export interface ActivityLogItem {
   action: string;
   intention?: string;
   breakActivity?: string;
-};
+}
+
+export interface LocalState {
+  activityLog?: ActivityLogItem[];
+  localSchemaVersion?: number;
+}
+
+export interface SyncState extends DefaultState {
+  syncSchemaVersion?: number;
+}
+
+export interface ExtendedState extends SyncState, LocalState {}
 
 export declare const defaultState: DefaultState;

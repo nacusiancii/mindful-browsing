@@ -33,6 +33,5 @@
     { "id": "todos", "label": "Check todos", "enabled": true },
     { "id": "projects", "label": "Review old projects", "enabled": true },
     { "id": "connect", "label": "Connect with loved ones", "enabled": true }
-  ],
-  "activityLog": []
+  ]
 }

@@ -4,33 +4,45 @@
  * It initializes the extension, sets up listeners, and orchestrates the different modules.
  */
 
+const SCHEMA_VERSIONS = {
+  LOCAL: {
+    LOG_ACTIVITY: 1,
+    BASE: 0
+  },
+  SYNC: {
+    BASE: 0
+  }
+}
+const LOCAL_SCHEMA_VERSION = SCHEMA_VERSIONS.LOCAL.LOG_ACTIVITY;
+const SYNC_SCHEMA_VERSION = SCHEMA_VERSIONS.SYNC.BASE;
+let isMigrationRunning = false;
+
+const isSchemaMigrationNeeded = (localState, syncState) => {
+  const localSchemaVersion = localState?.localSchemaVersion || SCHEMA_VERSIONS.LOCAL.BASE;
+  const syncSchemaVersion = syncState?.syncSchemaVersion || SCHEMA_VERSIONS.SYNC.BASE;
+  return localSchemaVersion < LOCAL_SCHEMA_VERSION || syncSchemaVersion < SYNC_SCHEMA_VERSION;
+};
+
+
+const promisifyChromeStorage = (storageObj, methodName, ...args) =>
+  new Promise((resolve,reject) => storageObj[methodName](...args, (...cbArgs)=>{
+    if (chrome.runtime.lastError) return reject(chrome.runtime.lastError);
+
+    if (cbArgs.length === 0) return resolve();
+    if (cbArgs.length === 1) return resolve(cbArgs[0]);
+    return resolve(cbArgs);
+  }));
+
 // --- Session Bypass Map ---
 /**
  * Map to track session bypasses for tabId + hostname combinations with timestamps.
  * This prevents infinite loops when redirecting to mindful pause pages and allows
  * refreshing within a session window.
+ * Should be cleaned up periodically to prevent memory leaks.
  * @type {Map<string, number>}
  */
 const SESSION_BYPASS = new Map();
-
-/**
- * Expiration time for session bypasses (5 minutes in milliseconds).
- * @type {number}
- */
 const BYPASS_EXPIRATION_TIME = 5 * 60 * 1000; // 5 minutes
-// --- Storage Utilities ---
-/**
- * Retrieves state from chrome.storage.sync.
- * @param {string|string[]|null} keys - A key or array of keys to retrieve. If null, retrieves the entire state.
- * @returns {Promise<object>} A promise that resolves with the retrieved state object.
- */
-const getState = (keys = null) =>
-  new Promise((resolve) => chrome.storage.sync.get(keys, resolve));
-
-/**
- * Cleans up expired entries from the SESSION_BYPASS Map.
- * This function should be called periodically to prevent memory leaks.
- */
 const cleanupExpiredBypasses = () => {
   const currentTime = Date.now();
   for (const [key, timestamp] of SESSION_BYPASS.entries()) {
@@ -40,15 +52,41 @@ const cleanupExpiredBypasses = () => {
   }
 };
 
-// Run cleanup every 2 minutes
-setInterval(cleanupExpiredBypasses, 2 * 60 * 1000);
+// --- Storage Utilities ---
+/**
+ * Retrieves state from chrome.storage.sync.
+ * @param {string|string[]|null} keys - A key or array of keys to retrieve. If null, retrieves the entire state.
+ * @returns {Promise<object>} A promise that resolves with the retrieved state object.
+ */
+const getState = (keys = null) => 
+  promisifyChromeStorage(chrome.storage.sync, 'get', keys);
+
 /**
  * Updates the state in chrome.storage.sync.
  * @param {object} newState - An object containing the key-value pairs to update.
  * @returns {Promise<void>} A promise that resolves when the state has been updated.
  */
 const setState = (newState) =>
-  new Promise((resolve) => chrome.storage.sync.set(newState, resolve));
+  promisifyChromeStorage(chrome.storage.sync, 'set', newState);
+
+/**
+ * Retrieves state from chrome.storage.local.
+ * @param {string|string[]|null} keys - A key or array of keys to retrieve. If null, retrieves the entire state.
+ * @returns {Promise<object>} A promise that resolves with the retrieved state object.
+ */
+const getLocalState = (keys = null) =>
+  promisifyChromeStorage(chrome.storage.local, 'get', keys);
+
+/**
+ * Updates the state in chrome.storage.local.
+ * @param {object} newState - An object containing the key-value pairs to update.
+ * @returns {Promise<void>} A promise that resolves when the state has been updated.
+ */
+const setLocalState = (newState) =>
+  promisifyChromeStorage(chrome.storage.local, 'set', newState);
+
+// Run cleanup every 2 minutes
+setInterval(cleanupExpiredBypasses, 2 * 60 * 1000);
 
 // --- Default State ---
 // Function to load default state from JSON file
@@ -62,9 +100,63 @@ const loadDefaultState = async () => {
   }
 };
 
+// --- Data Migration ---
+/**
+ * Migrates activityLog from chrome.storage.sync to chrome.storage.local.
+ * This function is idempotent and safe to run multiple times.
+ * @returns {Promise<boolean>} True if migration was performed, false if not needed
+ */
+const migrateActivityLogData = () => {
+  const performMigration = () => Promise.all([
+    getState('activityLog'),
+    getLocalState('activityLog')
+  ]).then(([syncData, localData]) => [
+      ...(syncData?.activityLog || []), 
+      ...(localData?.activityLog || [])
+    ].sort((a, b) => b.timestamp - a.timestamp).slice(0, 1000))
+    .then((finalActivityLog) => setLocalState({ activityLog: finalActivityLog }))
+    .then(() => promisifyChromeStorage(chrome.storage.sync, 'remove', ['activityLog']))
+    .then(() => setLocalState({ localSchemaVersion: SCHEMA_VERSIONS.LOCAL.LOG_ACTIVITY }))
+    .then(() => getState('syncSchemaVersion'))
+    .then((state) => (state?.syncSchemaVersion) ?? setState({syncSchemaVersion: SCHEMA_VERSIONS.SYNC.BASE}))
+    .then(() => {
+      console.log("Activity log migration completed successfully");
+      return true;
+    })
+    .catch((error) => {
+      console.error("Failed to migrate activity log data:", error);
+      return false;
+    });
+
+  return getLocalState('localSchemaVersion')
+    .then((localState) => localState?.localSchemaVersion || SCHEMA_VERSIONS.LOCAL.BASE)
+    .catch(() => SCHEMA_VERSIONS.LOCAL.BASE) // default to 0 if localSchemaVersion fetch fails
+    .then((localSchemaVersion) => localSchemaVersion < SCHEMA_VERSIONS.LOCAL.LOG_ACTIVITY)
+    .then((shouldMigrate) => {
+      if (shouldMigrate) {
+        console.log("Starting activity log data migration...");
+        return performMigration();
+      }
+      console.log("Activity log migration not needed, skipping...");
+      return false;
+    })
+    .catch((error) => {
+      console.error("Failed to check migration status:", error);
+      return false;
+    });
+};
+
+// since only migration as of now, directly calling that migration function
+const performMigrations = () => {
+  if (isMigrationRunning) return;
+  isMigrationRunning = true;
+  migrateActivityLogData()
+    .finally(() => isMigrationRunning = false);
+};
+
 // --- Activity Logger ---
 /**
- * Logs a new activity to the activityLog in chrome.storage.
+ * Logs a new activity to the activityLog in chrome.storage.local.
  * @param {object} activity - The activity object to log.
  * @prop {string} activity.site - The site the activity relates to.
  * @prop {number} activity.timestamp - The timestamp of the activity.
@@ -74,9 +166,9 @@ const loadDefaultState = async () => {
  */
 const logActivity = async (activity) => {
   try {
-    const { activityLog = [] } = await getState("activityLog");
-    const newLog = [activity, ...activityLog].slice(0, 1000);
-    await setState({ activityLog: newLog });
+    const { activityLog } = await getLocalState("activityLog");
+    const newLog = [activity, ...(activityLog || [])].slice(0, 1000);
+    await setLocalState({ activityLog: newLog });
   } catch (error) {
     console.error(error);
   }
@@ -133,9 +225,12 @@ const handleNav = async (details) => {
 };
 
 // --- Message Handler ---
-const MESSAGE_HANDLERS = {
+const messageHandlers = {
   async getInitialData() {
-    return getState();
+    return {
+      ...(await getState()),
+      ...(await getLocalState()),
+    };
   },
 
   async saveState(payload) {
@@ -158,7 +253,7 @@ const MESSAGE_HANDLERS = {
     chrome.tabs.update(tabId, { url: targetSite });
   },
 
-  async tookMindfulBreak({ targetSite, breakActivity, tabId }) {
+  async tookMindfulBreak({ targetSite, breakActivity }) {
     await logActivity({
       site: new URL(targetSite).hostname,
       timestamp: Date.now(),
@@ -167,12 +262,11 @@ const MESSAGE_HANDLERS = {
     });
   },
 
-  async logPause({ site, timestamp, tabId }) {
+  async logPause({ site, timestamp }) {
     await logActivity({
       site: new URL(site).hostname,
       timestamp: timestamp || Date.now(),
       action: "took_pause",
-      tabId,
     });
   },
 
@@ -185,7 +279,7 @@ const MESSAGE_HANDLERS = {
 const addMessageListener = () => {
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     try {
-      const handler = MESSAGE_HANDLERS[message.action];
+      const handler = messageHandlers[message.action];
       if (!handler) {
         console.warn("Unknown message action:", message.action);
         return;
@@ -204,6 +298,7 @@ const addMessageListener = () => {
 // --- Installation Listener ---
 chrome.runtime.onInstalled.addListener((details) => {
   console.log("Mindful Browsing extension installed/updated", details);
+  
   if (details.reason === "install") {
     // On first install, populate storage with default state
     loadDefaultState()
@@ -211,6 +306,15 @@ chrome.runtime.onInstalled.addListener((details) => {
       .catch((error) => console.error("Failed to set default state:", error));
     // Open the onboarding page for the user
     chrome.tabs.create({ url: "onboarding.html" });
+  } else if (details.reason === "update") {
+    console.log("Extension updated, checking for data migration...");
+    Promise.all([getLocalState('localSchemaVersion'), getState('syncSchemaVersion')])
+      .then(([localState, syncState]) => {
+        if (isSchemaMigrationNeeded(localState, syncState)) {
+          performMigrations();
+        }
+      })
+      .catch((error) => console.error("Failed to execute schema migration:", error));
   }
 });
 
@@ -229,7 +333,19 @@ getState().then((state) => {
   if (!state || Object.keys(state).length === 0) {
     console.log("No state found, initializing with default state.");
     loadDefaultState()
-      .then((defaultState) => setState(defaultState))
+      .then((defaultState) => setState({...defaultState, 
+        syncSchemaVersion: SYNC_SCHEMA_VERSION}))
+      .then(() => getLocalState())
+      .then((localState) => setLocalState({
+        ...localState, localSchemaVersion: LOCAL_SCHEMA_VERSION}))
       .catch((error) => console.error("Failed to set default state:", error));
+  } else {
+    Promise.all([getLocalState('localSchemaVersion'), getState('syncSchemaVersion')])
+      .then(([localState, syncState]) => {
+        if (isSchemaMigrationNeeded(localState, syncState)) {
+          performMigrations();
+        }
+      })
+      .catch((error) => console.error("Failed to execute schema migration:", error));
   }
 });
